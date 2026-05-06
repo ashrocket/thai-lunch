@@ -464,6 +464,18 @@
 <script>
 "use strict";
 
+// ─── Haptic engine ─────────────────────────────────────────────────────────
+const Haptic = {
+  _v: (p) => { try { navigator.vibrate?.(p); } catch (_) {} },
+  tap:     function() { this._v(8); },
+  soft:    function() { this._v(5); },
+  medium:  function() { this._v(16); },
+  heavy:   function() { this._v(30); },
+  success: function() { this._v([10, 50, 15]); },
+  error:   function() { this._v([35, 25, 35]); },
+  rise:    function(n) { this._v(Math.min(10 + n * 14, 70)); },
+};
+
 const PREVIEW_LIMIT_MS = 30000;
 
 const LEVELS = [
@@ -739,6 +751,7 @@ function onBiteTap(b) {
   if (!gameActive || locked || b.cleared) return;
   b.cleared = true;
   const g = svg.select(`g.bite[data-id="${b.id}"]`);
+  Haptic.tap();
   g.style("opacity", 0).style("transform", g.attr("transform") + " scale(0.3)");
   setTimeout(() => g.remove(), 200);
 
@@ -750,6 +763,7 @@ function onBiteTap(b) {
 
 function onChiliHit() {
   chiliHits++;
+  Haptic.rise(chiliHits);
   // escalation: each hit is harsher than the last
   // lockout length: 0.8s + 0.6s per hit (so hit1=1.4, hit2=2.0, hit3=2.6 ...)
   const lockMs = 800 + chiliHits * 600;
@@ -790,6 +804,7 @@ function checkWin() {
   if (matchEnded) return;
   const remaining = bites.filter(b => !b.cleared).length;
   if (remaining === 0) {
+    Haptic.success();
     endLevel(true, "cleared");
   }
 }
@@ -806,6 +821,7 @@ function endLevel(won, reason) {
   outcomeEl.classList.toggle("fail", !won);
 
   if (won) {
+    Haptic.success();
     outcomeEl.textContent = `Finished! ${cleared}/${total} bites. ${chiliHits} chilies survived.`;
     progress.completed[lvl.num] = true;
     if (lvl.num === progress.unlocked && lvl.num < LEVELS.length) {
@@ -813,8 +829,10 @@ function endLevel(won, reason) {
     }
     saveProgress(progress);
   } else if (reason === "too hot") {
+    Haptic.error();
     outcomeEl.textContent = `Too spicy. You tapped out after ${chiliHits} chili hits.`;
   } else {
+    Haptic.medium();
     outcomeEl.textContent = `Song ended. ${cleared}/${total} bites cleared, ${chiliHits} chilies.`;
   }
 
